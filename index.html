@@ -171,8 +171,8 @@ async function loadData() {
 
     const data = result.data;
 
-    const floor = data.floor_price?.eth ?? null;
-    const marketCap = data.market_cap?.eth ?? null;
+    const floor = data.floor_price ?? null;
+    const marketCap = data.market_cap ?? null;
     const supply = data.total_supply ?? null;
 
     const fdMarketCap =
