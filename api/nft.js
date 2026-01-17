@@ -1,3 +1,5 @@
+const cache = new Map();
+
 export default async function handler(req, res) {
   const { id } = req.query;
 
@@ -5,8 +7,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing collection id" });
   }
 
+  // Simple in-memory cache (per lambda instance)
+  if (cache.has(id)) {
+    return res.status(200).json(cache.get(id));
+  }
+
   try {
-    const r = await fetch(
+    const response = await fetch(
       `https://api.coingecko.com/api/v3/nfts/${id}`,
       {
         headers: {
@@ -15,13 +22,30 @@ export default async function handler(req, res) {
       }
     );
 
-    if (!r.ok) {
-      const text = await r.text();
-      return res.status(r.status).send(text);
+    if (!response.ok) {
+      const text = await response.text();
+      return res.status(response.status).send(text);
     }
 
-    const data = await r.json();
-    res.status(200).json(data);
+    const data = await response.json();
+
+    const payload = {
+      name: data.name,
+      symbol: data.symbol,
+      floor_price: data.floor_price,
+      market_cap: data.market_cap,
+      total_supply: data.total_supply
+    };
+
+    cache.set(id, payload);
+
+    // Edge cache (Vercel CDN)
+    res.setHeader(
+      "Cache-Control",
+      "s-maxage=300, stale-while-revalidate=600"
+    );
+
+    res.status(200).json(payload);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
