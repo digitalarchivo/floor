@@ -7,8 +7,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing collection id" });
   }
 
-  // Simple in-memory cache (per lambda instance)
+  // Cache HIT (important: still set Cache-Control)
   if (cache.has(id)) {
+    res.setHeader(
+      "Cache-Control",
+      "s-maxage=300, stale-while-revalidate=600"
+    );
     return res.status(200).json(cache.get(id));
   }
 
@@ -39,13 +43,14 @@ export default async function handler(req, res) {
 
     cache.set(id, payload);
 
-    // Edge cache (Vercel CDN)
+    // Cache MISS → still set Cache-Control
     res.setHeader(
       "Cache-Control",
       "s-maxage=300, stale-while-revalidate=600"
     );
 
     res.status(200).json(payload);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
